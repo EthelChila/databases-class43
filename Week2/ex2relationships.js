@@ -1,4 +1,5 @@
 const mysql = require("mysql");
+const util = require("util");
 
 const connection = mysql.createConnection({
   host: "localhost",
@@ -7,31 +8,28 @@ const connection = mysql.createConnection({
   database: "userdb",
 });
 
-connection.connect();
+const query = util.promisify(connection.query).bind(connection);
 
-function executeQueries() {
-  const createResearchPapersTable = `
-    CREATE TABLE IF NOT EXISTS research_papers (
+async function executeQueries() {
+  try {
+    await query("SET FOREIGN_KEY_CHECKS = 0");
+
+    const createResearchPapersTable = `CREATE TABLE IF NOT EXISTS research_papers (
       paper_id INT PRIMARY KEY,
       paper_title VARCHAR(100),
       conference VARCHAR(50),
       publish_date DATE,
       author_id INT,
       FOREIGN KEY (author_id) REFERENCES authors(author_id)
-    )
-  `;
-
-  const createAuthorPaperRelationshipTable = `
-    CREATE TABLE IF NOT EXISTS author_paper_relationship (
+    )`;
+    const createAuthorPaperRelationshipTable = `CREATE TABLE IF NOT EXISTS author_paper_relationship (
       author_id INT,
       paper_id INT,
+      PRIMARY KEY (author_id, paper_id),  -- Composite Primary Key
       FOREIGN KEY (author_id) REFERENCES authors(author_id),
       FOREIGN KEY (paper_id) REFERENCES research_papers(paper_id)
-    )
-  `;
-
-  const insertAuthors = `
-    INSERT INTO authors (author_id, author_name, university, date_of_birth, h_index, gender, mentor)
+    )`;
+    const insertAuthors = `INSERT INTO authors (author_id, author_name, university, date_of_birth, h_index, gender, mentor)
     VALUES
       (1, 'John Doe', 'Harvard University', '1990-01-01', 10, 'Male', NULL),
       (2, 'Jane Smith', 'Stanford University', '1991-02-02', 12, 'Female', 1),
@@ -47,11 +45,8 @@ function executeQueries() {
     (12, 'Isabella Moore', 'University of California, Berkeley', '2001-12-12', 13, 'Female', 3),
     (13, 'Liam Lee', 'University College London', '2002-01-13', 9, 'Male', 4),
     (14, 'Mia Harris', 'Columbia University', '2003-02-14', 12, 'Female', 2),
-    (15, 'Noah Thompson', 'Princeton University', '2004-03-15', 10, 'Male', 1)
-  `;
-
-  const insertPapers = `
-    INSERT INTO research_papers (paper_id, paper_title, conference, publish_date, author_id)
+    (15, 'Noah Thompson', 'Princeton University', '2004-03-15', 10, 'Male', 1)`;
+    const insertPapers = `INSERT INTO research_papers (paper_id, paper_title, conference, publish_date, author_id)
     VALUES
       (1, 'Paper 1', 'Conference A', '2022-01-01', 1),
       (2, 'Paper 2', 'Conference B', '2022-02-02', 2),
@@ -83,33 +78,26 @@ function executeQueries() {
 (28, 'Paper 28', 'Conference BB', '2024-04-04', 2),
  (29, 'Paper 29', 'Conference CC', '2024-05-05', 3),
  (30, 'Paper 30', 'Conference DD', '2024-06-06', 1)
-     
-  `;
+     `;
 
-  connection.query(createResearchPapersTable, (error, result) => {
-    if (error) throw error;
+    await query(createResearchPapersTable);
     console.log("Research papers table created");
-    console.log(result);
 
-    connection.query(createAuthorPaperRelationshipTable, (error, result) => {
-      if (error) throw error;
-      console.log("Author-Paper relationship table created");
-      console.log(result);
+    await query(createAuthorPaperRelationshipTable);
+    console.log("Author-Paper relationship table created");
 
-      connection.query(insertAuthors, (error, result) => {
-        if (error) throw error;
-        console.log("Authors added successfully");
-        console.log(result);
+    await query(insertAuthors);
+    console.log("Authors added successfully");
 
-        connection.query(insertPapers, (error, result) => {
-          if (error) throw error;
-          console.log("Research papers added successfully");
-          console.log(result);
-          connection.end();
-        });
-      });
-    });
-  });
+    await query(insertPapers);
+    console.log("Research papers added successfully");
+
+    await query("SET FOREIGN_KEY_CHECKS = 1");
+
+    connection.end();
+  } catch (error) {
+    throw error;
+  }
 }
 
 executeQueries();

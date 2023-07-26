@@ -33,7 +33,7 @@ async function createTableAddColumn() {
         university VARCHAR(50),
         date_of_birth DATE,
         h_index INT,
-        gender VARCHAR(10)
+        gender ENUM('Male', 'Female', 'Other')
       )
     `;
 
