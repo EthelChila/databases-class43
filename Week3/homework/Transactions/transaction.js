@@ -8,7 +8,7 @@ const connection = mysql.createConnection({
 });
 
 const transferAmount = (accountFrom, accountTo, amount) => {
-  connection.connect((err) => {
+  connection.connect(async (err) => {
     if (err) {
       console.error("Error connecting to the database:", err);
       return;
@@ -55,11 +55,11 @@ const transferAmount = (accountFrom, accountTo, amount) => {
 
         await query(
           `INSERT INTO account_changes (account_number, amount, changed_date, remark)
-          VALUES (?, ?, CURDATE(), 'Transfer to Account ${accountTo} from Account ${accountFrom}')`,
+          VALUES (?, ?, CURRENT_TIMESTAMP, 'Transfer to Account ${accountTo} from Account ${accountFrom}')`,
           [accountTo, amount]
         );
 
-        connection.query("COMMIT", (err) => {
+        connection.commit((err) => {
           if (err) {
             console.error("Error committing transaction:", err);
           } else {
@@ -69,13 +69,11 @@ const transferAmount = (accountFrom, accountTo, amount) => {
           connection.end();
         });
       } catch (error) {
-        connection.query("ROLLBACK", (err) => {
-          if (err) {
-            console.error("Error rolling back transaction:", err);
-          }
+        connection.rollback(() => {
+          console.error("Transaction aborted:", error);
+          connection.end();
+          throw error;
         });
-        connection.end();
-        throw error;
       }
     });
   });
