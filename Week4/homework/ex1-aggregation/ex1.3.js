@@ -19,6 +19,7 @@ const getContinentInfo = async (year, age) => {
           $match: {
             Year: year,
             Age: age,
+            Country: { $regex: /^[A-Z]+$/ },
           },
         },
         {
